@@ -1,4 +1,4 @@
-{{- if and .Values.updates.enabled (not .Values.initJob.enabled) }}
+{{- if and .Values.updates.enabled }}
 apiVersion: {{ include "common.capabilities.cronjob.apiVersion" . }}
 kind: CronJob
 metadata:

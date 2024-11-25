@@ -73,7 +73,7 @@ diagnosticMode:
 image:
   registry: docker.io
   repository: mediagis/nominatim
-  tag: 4.4
+  tag: 4.5
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -99,9 +99,21 @@ command:
   - /bin/bash
   - -ec
   - |
+    while [ true ]; do
+      echo "Waiting nominatim initialization ..." 
+      if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
+        echo "Initialization finished."
+        break
+      fi
+      sleep 30s
+    done
     nominatim refresh --website
-    a2enmod rewrite
-    /usr/sbin/apache2ctl -D FOREGROUND
+    echo "Starting nominatim ..."
+    gunicorn \
+    --bind :8080 \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    nominatim_api.server.falcon.server:run_wsgi
 ## @param args Override default container args (useful when using custom images)
 ##
 args: []
@@ -299,7 +311,7 @@ containerSecurityContext:
 livenessProbe:
   enabled: true
   httpGet:
-    path: /
+    path: /status
     port: http
     ## If using an HTTPS-terminating load-balancer, the probes may need to behave
     ## like the balancer to prevent HTTP 302 responses. According to the Kubernetes
@@ -329,7 +341,7 @@ livenessProbe:
 readinessProbe:
   enabled: true
   httpGet:
-    path: /
+    path: /status
     port: http
     ## If using an HTTPS-terminating load-balancer, the probes may need to behave
     ## like the balancer to prevent HTTP 302 responses. According to the Kubernetes
@@ -359,7 +371,7 @@ readinessProbe:
 startupProbe:
   enabled: false
   httpGet:
-    path: /
+    path: /status
     port: http
     ## If using an HTTPS-terminating load-balancer, the probes may need to behave
     ## like the balancer to prevent HTTP 302 responses. According to the Kubernetes
@@ -707,12 +719,20 @@ updates:
   command:
     - /bin/bash
     - -ec
+    - |
+      while [ true ]; do
+        echo "Waiting nominatim initialization ..." 
+        if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
+          echo "Initialization finished."
+          break
+        fi
+        sleep 30s
+      done
+      NOMINATIM_REPLICATION_MAX_DIFF=5000 nominatim replication --catch-up --threads 1
   ## @param updates.args Override default container args (useful when using custom images)
   ## ref: https://nominatim.org/release-docs/latest/admin/Update/#catch-up-mode
   ##
-  args:
-    - |
-      NOMINATIM_REPLICATION_MAX_DIFF=5000 nominatim replication --catch-up --threads 1
+  args: []
 
   ## @param initJob.podLabels Additional pod labels
   ## Ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/

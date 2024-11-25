@@ -146,6 +146,11 @@ spec:
             - /bin/bash
             - -ec
             - |
+              if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
+                echo "Nominatim is initialized."
+                exit 0
+              fi
+
               if [ -z "$CONTINUE" ]; then
                 echo "Starting data import."
                 nominatim import --osm-file data.osm.pbf --threads $THREADS
@@ -174,8 +179,8 @@ spec:
               nominatim admin --warm
 
               echo "Warming finished."
-              echo "Initialization finished. Please continue with step 2 now."
-            - /scripts/migrate-and-create-admin.sh
+              psql -d $NOMINATIM_DATABASE_DSN -c "CREATE TABLE init_job_done(completed_on TIMESTAMPTZ); INSERT INTO init_job_done(completed_on) VALUES(NOW());"
+              echo "Initialization finished."
           {{- if .Values.initJob.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.initJob.containerSecurityContext "context" $) | nindent 12 }}
           {{- end }}
