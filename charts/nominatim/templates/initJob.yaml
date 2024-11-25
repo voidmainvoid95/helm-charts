@@ -132,7 +132,7 @@ spec:
               {{- end }}
             {{- if .Values.flatnode.enabled }}
             - name: NOMINATIM_FLATNODE_FILE
-              value: /nominatim/flatnode/flatnode.file
+              value: /flatnode/flatnode.file
             {{- end }}
             - name: REPLICATION_ENABLED
               value: {{ .Values.updates.enabled | quote }}
@@ -190,7 +190,7 @@ spec:
             - mountPath: /dev/shm
               name: dshm
             {{- if .Values.flatnode.enabled }}
-            - mountPath: /nominatim/flatnode
+            - mountPath: /flatnode
               name: flatnode
               subPath: flatnode
             {{- end }}
