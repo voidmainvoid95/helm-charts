@@ -150,4 +150,6 @@ modules.xml
 # Chart dependencies
 **/charts/*.tgz
 
+**/charts/**/*-custom.yaml
+
 # End of https://www.toptal.com/developers/gitignore/api/helm

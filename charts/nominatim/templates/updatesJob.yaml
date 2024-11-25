@@ -88,7 +88,7 @@ spec:
           restartPolicy: Never
           initContainers:
             - name: wait-init-job
-              image: curlimages/curl
+              image: badouralix/curl-jq
               command:
                 - /bin/sh
               args:
