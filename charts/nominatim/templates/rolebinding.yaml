@@ -3,12 +3,16 @@ kind: RoleBinding
 metadata:
   name: {{ include "common.names.fullname" . }}-configmap-editor-binding
   namespace: {{ .Release.Namespace }}
-  labels:
-    app: {{ .Chart.Name }}
-    release: {{ .Release.Name }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.serviceAccount.serviceAccountName }}
+    name: {{ include "nominatim.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role

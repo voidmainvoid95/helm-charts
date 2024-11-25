@@ -86,6 +86,34 @@ spec:
           topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.updates.topologySpreadConstraints "context" .) | nindent 12 }}
           {{- end }}
           restartPolicy: Never
+          initContainers:
+            - name: wait-init-job
+              image: curlimages/curl
+              command:
+                - /bin/sh
+              args:
+                - -ec
+                - |
+                  SERVICE_ACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+                  NAMESPACE=$(cat ${SERVICE_ACCOUNT}/namespace)
+                  ACCESS_TOKEN=$(cat ${SERVICE_ACCOUNT}/token)
+                  API_SERVER="https://kubernetes.default.svc"
+                  CA_CERT=${SERVICE_ACCOUNT}/ca.crt
+
+                  while [ true ]; do
+                    INIT_JOB_DONE=$(curl --cacert ${CA_CERT} -sX GET \
+                      "${API_SERVER}/api/v1/namespaces/${NAMESPACE}/configmaps/{{ include "common.names.fullname" . }}-configmap" \
+                        -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                        -H "Accept: application/json" | jq ".data.init_job_done")
+                    
+                    if [ "${INIT_JOB_DONE}" == "false" ]; then
+                      echo "Waiting nominatim initialization ..."
+                      sleep 30s
+                    else
+                      echo "Nominatim is initialized."
+                      break
+                    fi
+                  done
           containers:
             - name: nominatim-updates
               image: {{ include "nominatim.image" . }}

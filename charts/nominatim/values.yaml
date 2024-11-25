@@ -99,14 +99,6 @@ command:
   - /bin/bash
   - -ec
   - |
-    while [ true ]; do
-      echo "Waiting nominatim initialization ..." 
-      if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
-        echo "Initialization finished."
-        break
-      fi
-      sleep 30s
-    done
     nominatim refresh --website
     echo "Starting nominatim ..."
     gunicorn \
@@ -720,14 +712,6 @@ updates:
     - /bin/bash
     - -ec
     - |
-      while [ true ]; do
-        echo "Waiting nominatim initialization ..." 
-        if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
-          echo "Initialization finished."
-          break
-        fi
-        sleep 30s
-      done
       NOMINATIM_REPLICATION_MAX_DIFF=5000 nominatim replication --catch-up --threads 1
   ## @param updates.args Override default container args (useful when using custom images)
   ## ref: https://nominatim.org/release-docs/latest/admin/Update/#catch-up-mode

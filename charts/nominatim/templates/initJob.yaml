@@ -21,6 +21,7 @@ spec:
       annotations: {{- include "common.tplvalues.render" (dict "value" .Values.initJob.podAnnotations "context" $) | nindent 8 }}
           {{- end }}
     spec:
+      serviceAccountName: {{ include "nominatim.serviceAccountName" .}}
       restartPolicy: Never
       {{- if .Values.initJob.podSecurityContext.enabled }}
       securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.initJob.podSecurityContext "context" $) | nindent 8 }}
@@ -146,8 +147,19 @@ spec:
             - /bin/bash
             - -ec
             - |
-              if [ "$(psql -d $NOMINATIM_DATABASE_DSN -tAc "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'init_job_done');")" == "t" ]; then
-                echo "Nominatim is initialized."
+              SERVICE_ACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+              NAMESPACE=$(cat ${SERVICE_ACCOUNT}/namespace)
+              ACCESS_TOKEN=$(cat ${SERVICE_ACCOUNT}/token)
+              API_SERVER="https://kubernetes.default.svc"
+              CA_CERT=${SERVICE_ACCOUNT}/ca.crt
+
+              INIT_JOB_DONE=$(curl --cacert ${CA_CERT} -sX GET \
+                "${API_SERVER}/api/v1/namespaces/${NAMESPACE}/configmaps/{{ include "common.names.fullname" . }}-configmap \
+                  -H "Authorization: Bearer $ACCESS_TOKEN" \
+                  -H "Accept: application/json" | jq ".data.init_job_done")
+
+              if [ "${INIT_JOB_DONE}" == "true" ]; then
+                echo "Nominatim initialized"
                 exit 0
               fi
 
@@ -179,7 +191,11 @@ spec:
               nominatim admin --warm
 
               echo "Warming finished."
-              psql -d $NOMINATIM_DATABASE_DSN -c "CREATE TABLE init_job_done(completed_on TIMESTAMPTZ); INSERT INTO init_job_done(completed_on) VALUES(NOW());"
+              curl --cacert ${CA_CERT} -sX PATCH \
+                "${API_SERVER}/api/v1/namespaces/${NAMESPACE}/configmaps/{{ include "common.names.fullname" . }}-configmap" \
+                  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                  -H "Content-Type: application/json-patch+json" \
+                  -d '[{"op": "replace", "path": "/data/init_job_done", "value": true}]'  
               echo "Initialization finished."
           {{- if .Values.initJob.containerSecurityContext.enabled }}
           securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.initJob.containerSecurityContext "context" $) | nindent 12 }}
