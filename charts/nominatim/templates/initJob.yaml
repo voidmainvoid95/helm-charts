@@ -192,7 +192,6 @@ spec:
             {{- if .Values.flatnode.enabled }}
             - mountPath: /flatnode
               name: flatnode
-              subPath: flatnode
             {{- end }}
           {{- if .Values.initJob.resources }}
           resources:
