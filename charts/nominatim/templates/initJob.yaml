@@ -21,6 +21,7 @@ spec:
       annotations: {{- include "common.tplvalues.render" (dict "value" .Values.initJob.podAnnotations "context" $) | nindent 8 }}
           {{- end }}
     spec:
+      {{- include "nominatim.imagePullSecrets" . | nindent 6 }}
       restartPolicy: Never
       {{- if .Values.initJob.podSecurityContext.enabled }}
       securityContext: {{- include "common.compatibility.renderSecurityContext" (dict "secContext" .Values.initJob.podSecurityContext "context" $) | nindent 8 }}
@@ -113,7 +114,6 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           workingDir: /nominatim
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- include "nominatim.imagePullSecrets" . | nindent 6 }}
           env:
             {{- if .Values.initJob.customStyleUrl }}
             - name: NOMINATIM_IMPORT_STYLE
