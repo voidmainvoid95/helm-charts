@@ -113,6 +113,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           workingDir: /nominatim
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "nominatim.imagePullSecrets" . | nindent 6 }}
           env:
             {{- if .Values.initJob.customStyleUrl }}
             - name: NOMINATIM_IMPORT_STYLE

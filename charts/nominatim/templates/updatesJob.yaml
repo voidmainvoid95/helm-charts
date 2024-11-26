@@ -90,6 +90,7 @@ spec:
             - name: nominatim-updates
               image: {{ include "nominatim.image" . }}
               imagePullPolicy: {{ .Values.image.pullPolicy }}
+              {{- include "nominatim.imagePullSecrets" . | nindent 6 }}
               workingDir: /nominatim
               {{- if .Values.diagnosticMode.enabled }}
               command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 16 }}
